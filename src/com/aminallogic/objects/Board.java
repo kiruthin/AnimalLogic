@@ -1,9 +1,11 @@
 package com.aminallogic.objects;
 
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GradientPaint;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -31,9 +33,10 @@ import java.awt.geom.Rectangle2D;
 
 import com.aminallogic.exceptions.InvalidBoardException;
 
-public class Board extends JPanel implements ActionListener, MouseListener, MouseMotionListener, KeyListener{
+public class Board extends JFrame implements ActionListener, MouseListener, MouseMotionListener, KeyListener{
 	
-	static String testBoard = "CB1,CR2,LY3,GR4,HB5,CY6,LR7,HY8,CG10,GG11,HR12,GY13,HG14,GB15,LB16";
+	static String testBoard  = "GG1,GY2,GB3,GR4,LG5,LY6,LB7,LR8,HG9,HY10,HB11,HR12,CG13,CY14,CB15,CR16";
+	static String testBoard1 = "CB1,CR2,LY3,GR4,HB5,CY6,LR7,HY8,LG9,CG10,GG11,HR12,GY13,HG14,GB15,LB16";
 	
 	/*
 	 * We will assume that the size of the board also determine the number of types of pieces 
@@ -43,7 +46,7 @@ public class Board extends JPanel implements ActionListener, MouseListener, Mous
     int ANIMAL_TYPES = -1;
 	int NUM_COLORS   = -1;
 
-	ArrayList TheBoard [] = null;
+	AnimalQueue TheBoard [] = null;
 //*
 	
 
@@ -172,7 +175,7 @@ public class Board extends JPanel implements ActionListener, MouseListener, Mous
     private double xmin, ymin, xmax, ymax;
 
     // name of window
-    private String name = "Draw";
+    private String name = "Animal Logic Game";
 
     // for synchronization
     private final Object mouseLock = new Object();
@@ -189,7 +192,7 @@ public class Board extends JPanel implements ActionListener, MouseListener, Mous
     private Graphics2D offscreen, onscreen;
 
     // the frame for drawing to the screen
-    private JFrame frame = new JFrame();
+   // private JFrame frame = new JFrame();
 
     // mouse state
     private boolean isMousePressed = false;
@@ -203,15 +206,15 @@ public class Board extends JPanel implements ActionListener, MouseListener, Mous
     // event-based listeners
     //private final ArrayList<DrawListener> listeners = new ArrayList<DrawListener>();
     
-    //TreeColor
-    protected Integer controlColorValue; 
     
 	public Board(String StartingSequence, int size) throws Exception
 	{
 		BOARD_SIZE   = size;
 		ANIMAL_TYPES = size;
 		NUM_COLORS   = size;
-		TheBoard = new ArrayList [BOARD_SIZE];
+		TheBoard = new AnimalQueue [BOARD_SIZE];
+		
+		this.initPanel();
 		this.initializeBoard(StartingSequence);
 	}
 	public Board(int size) throws Exception
@@ -245,20 +248,41 @@ public class Board extends JPanel implements ActionListener, MouseListener, Mous
 		 *   
 		 *   For example:
 		 *   
-		 *   	CB1,CR2,LY3,GR4,HB5,CY6,LR7,HY8,CG10,GG11,HR12,GY13,HG14,GB15,LB16
+		 *   	CB1,CR2,LY3,GR4,HB5,CY6,LR7,HY8,LG9,CG10,GG11,HR12,GY13,HG14,GB15,LB16
 		 */
-		HashMap<String, Integer> validCheck   = new HashMap<String, Integer>(); 
-		
-		
 		List<String> thePieceList = Arrays.asList(StartingSequence.split(","));
 //		thePieceList.forEach(item->System.out.print(item+" "));
 		thePieceList.forEach(item->{
 			System.out.println("PieceCode ="+ item.toUpperCase());
-			Piece tempP = new Piece(item.toUpperCase());
+			AnimalQueue aq  = null;
+			Piece tempP = new Piece(item.toUpperCase(), onscreen, offscreen);
+			int rowCol = ((tempP.getBoardPostiion()-1)/this.BOARD_SIZE);
+			int queP   = ((tempP.getBoardPostiion()-1)%this.BOARD_SIZE);
+			
+			if(this.TheBoard[rowCol] == null)
+			{
+				aq = new AnimalQueue(
+							AnimalQueue.recX, 
+							AnimalQueue.recY+(rowCol*AnimalQueue.recY_space), 
+							onscreen, offscreen);
+				this.TheBoard[rowCol] = aq;	
+			}
+			else
+			{
+				aq = this.TheBoard[rowCol];
+			}
+			aq.addPiece(tempP, (tempP.getBoardPostiion()-1)%this.BOARD_SIZE);
+			tempP.setMyQueue(aq);
+			tempP.setQueuePostiion(queP);
+			
+			System.out.println(tempP);
 		});
-
-		if (frame != null) frame.setVisible(false);
-        frame = new JFrame();
+        this.paintComponent(onscreen);
+	}
+	public void initPanel()
+	{
+		this.setVisible(false);
+        //frame = new JFrame();
         offscreenImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         onscreenImage  = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         offscreen = offscreenImage.createGraphics();
@@ -285,70 +309,47 @@ public class Board extends JPanel implements ActionListener, MouseListener, Mous
         draw.addMouseListener(this);
         draw.addMouseMotionListener(this);
 
-        frame.setContentPane(draw);
-        frame.addKeyListener(this);    // JLabel cannot get keyboard focus
-        frame.setResizable(false);
+        this.setContentPane(draw);
+        this.addKeyListener(this);    // JLabel cannot get keyboard focus
+        this.setResizable(true);
         // frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);            // closes all windows
-        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);      // closes only current window
-        frame.setTitle(name);
-        frame.setJMenuBar(createMenuBar());
-        frame.pack();
-        frame.requestFocusInWindow();
-        frame.setVisible(true);
+        this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);      // closes only current window
+        this.setTitle(name);
+       // frame.setJMenuBar(createMenuBar());
+        this.pack();
+        this.requestFocusInWindow();
+        this.setVisible(true);
 
      //   generalColorValue = getColorParameter(Skin.GENERAL_TEXT_COLOR); 
         //controlColorValue = getColorParameter(Skin.CONTROL_BACKGROUND_COLOR); 
         //trimColorValue = getColorParameter(Skin.TRIM_COLOR); 
-        
-        this.paintComponent(onscreen);
-  
 	}
     public void paintComponent (Graphics2D g) {
-    	int recX       = 40;
-    	int recY       = 40;
-    	int recY_space = 60;
-        
     	Graphics2D g2d = (Graphics2D) g;
-        g2d.setColor(BLACK);
-        //g2d.drawRect(20, 20, 400, 100);
-        //g2.drawLine(40, 40, 80, 100);
-        
-        //Color trimColor = new Color(trimColorValue);
-       // Color controlColor = new Color(controlColorValue);
-        g2d.setColor(YELLOW);
-        
+    	super.paintComponents(g2d);
+        //Arrays.setAll(TheBoard, i -> supplier.paint());
+        //TheBoard.forEach(item->System.out.print(item+" "));
         for(int i=0; i<this.BOARD_SIZE; i++)
         {
-        	//GradientPaint gragient = new GradientPaint(40, 40, BLACK, 130, 130, YELLOW);
-        	//g2d.setPaint(gragient);
-        	g2d.fill(new Rectangle2D.Float(recX, recY+(i*recY_space), 300, 50));
+        	this.TheBoard[i].draw();
         }        
+        this.validate();
+        this.repaint();
     }
-
-	private JMenuBar createMenuBar() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	
 	private void setPenColor() {
-		// TODO Auto-generated method stub
-		
+		// TODO Auto-generated method stub	
 	}
 	private void clear() {
 		// TODO Auto-generated method stub
-		
 	}
 	private void setFont() {
 		// TODO Auto-generated method stub
-		
 	}
 	private void setPenRadius() {
 		// TODO Auto-generated method stub
-		
 	}
 	private void setXscale() {
 		// TODO Auto-generated method stub
-		
 	}
 	@Override
 	public String toString()
@@ -371,19 +372,26 @@ public class Board extends JPanel implements ActionListener, MouseListener, Mous
 		return returnMe+"\n";
 	}
 	@Override
-	public void mouseDragged(MouseEvent arg0) {
+	public void mouseDragged(MouseEvent e) {
 		// TODO Auto-generated method stub
-		
+		if(Piece.moving)
+		{
+			System.out.println("Mouse dragged" + Piece.selectedPiece);
+			Piece.selectedPiece.setLocation(e.getPoint());
+			//Piece.selectedPiece.paint();
+			onscreen.fill3DRect(e.getX(), e.getY(), 100, 50, false);
+			this.validate();
+			this.repaint();
+		}
 	}
 	@Override
-	public void mouseMoved(MouseEvent arg0) {
-		// TODO Auto-generated method stub
-		
+	public void mouseMoved(MouseEvent e) {
+
 	}
 	@Override
 	public void mouseClicked(MouseEvent arg0) {
 		// TODO Auto-generated method stub
-		System.out.println("mouseClicked");
+		//System.out.println("mouseClicked");
 	}
 	@Override
 	public void mouseEntered(MouseEvent arg0) {
@@ -396,13 +404,21 @@ public class Board extends JPanel implements ActionListener, MouseListener, Mous
 		System.out.println("mouseExited");
 	}
 	@Override
-	public void mousePressed(MouseEvent arg0) {
+	public void mousePressed(MouseEvent e) {
 		// TODO Auto-generated method stub
-		System.out.println("mousePressed");
+		for(int i=0; i<this.BOARD_SIZE; i++)
+		{
+			AnimalQueue aq = this.TheBoard[i];
+			if(aq.contains(e.getPoint()))
+			{
+				aq.processMousePress(e);
+			}
+		}
 	}
 	@Override
 	public void mouseReleased(MouseEvent arg0) {
 		// TODO Auto-generated method stub
+		Piece.moving = false;
 		System.out.println("mouseReleased");
 	}
 	@Override
@@ -424,5 +440,7 @@ public class Board extends JPanel implements ActionListener, MouseListener, Mous
 	public void actionPerformed(ActionEvent arg0) {
 		// TODO Auto-generated method stub
 		System.out.println("actionPerformed");
+		this.validate();
+		this.repaint();
 	}
 }
