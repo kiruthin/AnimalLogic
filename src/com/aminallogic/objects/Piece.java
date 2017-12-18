@@ -3,6 +3,13 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.awt.image.BufferedImageOp;
+import java.awt.image.WritableRaster;
+import java.io.File;
+import java.io.IOException;
+
+import javax.imageio.ImageIO;
 
 import com.aminallogic.enums.*;
 import com.aminallogic.exceptions.InvalidPieceException;
@@ -21,11 +28,17 @@ public class Piece extends Rectangle{
 	AnimalQueue myQueue   = null;
 	int myBoardPosition   = -1;
 	int myQueuePosition   = -1;
-	private Color myColor = Color.PINK;
+	private java.awt.Color myColor = Color.PINK;
+	private boolean iammoving = false;
 	
+	BufferedImage img = null;
+
 	public static int relativeX = 10, relativeY = 10;
-	public static int      recH = 30,     recW = 30;
-	public int       recX_Space = 4*relativeX;
+	public static int      recH = 10,     recW = 10;
+	private int Scale           = 3;
+	public int       recX_Space = relativeX+3;
+	
+	private int imgW =0, imgH = 0, imgScale =1;
 	
 	public static boolean moving       = false;
 	public static Piece   selectedPiece= null;
@@ -36,6 +49,7 @@ public class Piece extends Rectangle{
 		myType  = t;
 		myColor = c;
 		myBoardPosition = pos;
+		initPiece();
 	}
 	
 	Piece(String cb, Graphics2D onS, Graphics2D offS) //
@@ -63,17 +77,62 @@ public class Piece extends Rectangle{
 				case "C":
 				case "c":
 					tempT = Type.CAMEL;
+					try 
+					{
+					    img = ImageIO.read(new File("/home/knjenga/Desktop/camel.png"));
+				        imgW = img.getWidth(null)+150;
+				        imgH = img.getHeight(null)+175;
+				        imgScale = 50;
+					} 
+					catch (IOException e) {
+						System.out.print(e);
+					}
 					break;
 				case "G":
 				case "g":
 					tempT = Type.GIRAFFE;	
+					try 
+					{
+					    img = ImageIO.read(new File("/home/knjenga/Desktop/giraffe.png"));
+				
+				        imgW = img.getWidth(null);
+				        imgH = (img.getHeight(null));
+				        imgScale = 43;
+					} 
+					catch (IOException e) {
+						System.out.print(e);
+					}
 					break;
 				case "L":
 				case "l":
 					tempT = Type.LION;
+					try 
+					{
+					    img = ImageIO.read(new File("/home/knjenga/Desktop/lion.png"));
+				
+				        imgW = img.getWidth(null);
+				        imgH = (img.getHeight(null));
+				        imgScale = 100;
+					} 
+					catch (IOException e) {
+						System.out.print(e);
+					}
+
+					break;
 				case "H":
 				case "h":
 					tempT = Type.HIPPO;
+					try 
+					{
+					    img = ImageIO.read(new File("/home/knjenga/Desktop/hippo.png"));
+				
+				        imgW = img.getWidth(null);
+				        imgH = (img.getHeight(null))+200;
+				        imgScale = 70;
+					} 
+					catch (IOException e) {
+						System.out.print(e);
+					}
 					break;
 				default:
 					throw new InvalidPieceException("The Type format is unsupported. Valid values are G, C, H and L");
@@ -101,7 +160,41 @@ public class Piece extends Rectangle{
 			}
 			myType =tempT;
 			myBoardPosition = Integer.parseInt(""+p);
+			initPiece();
 		}
+	}
+
+    private BufferedImage colorImage(BufferedImage image) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        WritableRaster raster = image.getRaster();
+
+        for (int xx = 0; xx < width; xx++) {
+            for (int yy = 0; yy < height; yy++) {
+                int[] pixels = raster.getPixel(xx, yy, (int[]) null);
+                
+                if (pixels[0] == 255 && pixels[1] == 255 && pixels[2] == 255)
+                {
+                	pixels[0] = 0;
+                	pixels[1] = 0;
+                	pixels[2] = 0;
+                }
+                else
+                {
+                	pixels[0] = myColor.getRed();
+                	pixels[1] = myColor.getGreen();
+                	pixels[2] = myColor.getBlue();
+                }
+                raster.setPixel(xx, yy, pixels);
+            }
+        }
+        return image;
+    }
+	public void initPiece()
+	{
+		this.setSize(recW*Scale, recH*Scale);
+		if(img != null)
+	    img = colorImage(img);
 	}
 	public void setMyQueue(AnimalQueue aq)
 	{
@@ -131,6 +224,14 @@ public class Piece extends Rectangle{
 	{
 		this.myQueuePosition = qp;
 	};
+	public void setScale(int s)
+	{
+		this.Scale = s;
+	}
+	public int getScale()
+	{
+		return this.Scale;
+	}
 	@Override
 	public String toString()
 	{
@@ -139,24 +240,67 @@ public class Piece extends Rectangle{
 	}
 	public void draw()
 	{
-		int myX = relativeX+getMyQueue().x + (this.getQueuePostiion()*this.recX_Space);
-		int myY = relativeY+getMyQueue().y;
+		if(!IsMoving())
+		{
+	//		int myX = relativeX+getMyQueue().x + (this.getQueuePostiion()*this.recX_Space);
+	//		int myY = relativeY+getMyQueue().y;
+	//		this.setLocation(myX,myY);		
+		}
+		//BufferedImageOp op = null;
+		//onscreen.drawImage(img, op, this.recW, this.recH);
+        
 		
-		this.setLocation(myX,myY);
-		
-		this.setSize(recW, recH);
-		onscreen.setColor(myColor);
-		onscreen.fill(this);
-		//System.out.println("relativeX ="+relativeX +" relativeY ="+relativeY +" Point ="+getMyQueue().x);
-		//System.out.println("P: x="+ myX+" y ="+myY);
+		//onscreen.setColor(myColor);
+		//onscreen.fill(this);
+		this.setSize(Piece.recW*Scale, Piece.recH*Scale);
+        onscreen.drawImage(img, x+1, y, (imgW/imgScale)*Scale, (imgH/imgScale)*Scale, null);
 	}
-	public void processMousePress(MouseEvent e)
+	public void setMoving(boolean t)
+	{
+		this.iammoving = t;
+	}
+	public boolean IsMoving()
+	{
+		return this.iammoving;
+	}
+	public boolean processMousePress(MouseEvent e)
 	{
 		if (this.contains(e.getPoint()))
 		{
-			Piece.moving = true;
+			this.setMoving(true);
 			System.out.println("Clicked a piece!!"+ toString());
 			Piece.selectedPiece = this;
+			Piece.moving = true;
 		}
+		else
+		{
+			this.setMoving(false);
+		}
+		return IsMoving();
 	}
+
+	public static int getRelativeX() {
+		return relativeX;
+	}
+
+	public static void setRelativeX(int relativeX) {
+		Piece.relativeX = relativeX;
+	}
+
+	public static int getRelativeY() {
+		return relativeY;
+	}
+
+	public static void setRelativeY(int relativeY) {
+		Piece.relativeY = relativeY;
+	}
+
+	public int getRecX_Space() {
+		return recX_Space;
+	}
+
+	public void setRecX_Space(int recX_Space) {
+		this.recX_Space = recX_Space;
+	}
+	
 }

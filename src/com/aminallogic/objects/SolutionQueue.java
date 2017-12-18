@@ -1,30 +1,28 @@
 package com.aminallogic.objects;
 
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.event.MouseEvent;
-import java.util.LinkedList;
 import java.util.Optional;
-import java.util.Queue;
+import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
-public class AnimalQueue extends LogicQueue{
+public class SolutionQueue extends LogicQueue{
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 2L;
+	public static int PieceScale   = 1;
 	private Graphics2D onscreen, offscreen = null;
-	public static int PieceScale   = 3;
-	LinkedList<Piece> myQueue = new LinkedList<Piece>();
+	Stack<Piece> myStack = new Stack<Piece>();
 	int width      = 300, height     = 50;
 	//recX = 40, recY = 200, 
 	
     static int recY_space = 60;
 	java.awt.Color myColor = Board.BLACK;
 	
-	AnimalQueue(int x, int y, Graphics2D onS, Graphics2D offS)
+	SolutionQueue(int x, int y, Graphics2D onS, Graphics2D offS)
 	{
 		super(x,y,onS,offS);
 
@@ -36,32 +34,48 @@ public class AnimalQueue extends LogicQueue{
 	}
 	public void addPiece(Piece p)
 	{
-		myQueue.add(p);
+		int myX = Piece.getRelativeX()+this.x + (this.myStack.size()*p.recX_Space);
+		int myY = Piece.getRelativeY()+this.y;
+		p.setLocation(myX,myY);	
+		p.setSize(Piece.recW*SolutionQueue.PieceScale, Piece.recH*SolutionQueue.PieceScale);
+		p.setScale(SolutionQueue.PieceScale);
+		p.draw();
+		//System.out.println("Adding piece to Solution queue" + p);
+		myStack.push(p);
 	}
 	public void addPiece(Piece p, int ix)
 	{
-		myQueue.add(ix, p);
+		myStack.add(ix, p);
 	}
 	public Optional<Piece> removePiece()
 	{
-		if (!myQueue.isEmpty())
+		if (!myStack.isEmpty())
 		{
-			return Optional.of(this.myQueue.remove());
+			return Optional.of(this.myStack.pop());
 		}
 		else
 		{
 			return Optional.empty();
 		}
 	}
-	public Optional<Piece> getTop()
+	public boolean isValidMove(Piece p)
 	{
-		if (!myQueue.isEmpty())
+		if (myStack.isEmpty())
 		{
-			return Optional.of(this.myQueue.peek());
+			return true;
 		}
 		else
 		{
-			return Optional.empty();
+			Piece check = myStack.peek();
+			
+			if (p.getType() == check.getType()) //Same species
+			{
+				return true;
+			}
+			else								//Different species
+			{
+				return (p.getColor().getRGB() == check.getColor().getRGB());
+			}
 		}
 	}
 	public void setColor(java.awt.Color c)
@@ -72,8 +86,16 @@ public class AnimalQueue extends LogicQueue{
 	{
 		onscreen.setColor(myColor);
 		onscreen.fill(this);
+		/*
+		myStack.forEach(item->{
+			//System.out.println("Color ="+ myColor);
+			System.out.println(" Drawing Solution Queue "+ item);
+			item.draw();
+		});
+		*/	
+		
 		final AtomicInteger i = new AtomicInteger(0);
-		myQueue.forEach(item->{
+		myStack.forEach(item->{
 			//System.out.println("i ="+ i.get());
 			//System.out.println("Painting "+ myStack.elementAt(i));
 			int myX = Piece.getRelativeX()+this.x + (i.getAndIncrement()*(item.getRecX_Space()*item.getScale()));
@@ -81,35 +103,28 @@ public class AnimalQueue extends LogicQueue{
 			item.setLocation(myX, myY);
 			item.draw();
 			//i.incrementAndGet();
-		});
+		});	
 	}
 	public Optional<Piece> processMousePress(MouseEvent e)
 	{	
-	/*
-		final Piece tempP;
-		myStack.forEach(item->{
+		/*myStack.forEach(item->{
 			if (item.processMousePress(e))
 			{
-			    tempP = this.myStack.pop();
-			//	return;
+				Piece tempP = this.myStack.pop();
+				return;
 			}
 		})
-		;
-	*/	
-		return  myQueue.stream()
-			.filter(s->s.processMousePress(e)== true)
-			.findFirst();                     //Only one item matches 
-
-	/*
-		if (this.contains(e.getPoint()) && !myQueue.isEmpty())
+		;*/
+		//myStack.stream()
+		//.filter(s->s.processMousePress(e)== true)
+		//.forEach(Piece::sdraw);
+		if (this.contains(e.getPoint()) && !myStack.isEmpty())
 		{
-			System.out.println("clicked !");
-			return Optional.of(this.myQueue.peekFirst());
+			return Optional.of(this.myStack.pop());
 		}
 		else
 		{
 			return Optional.empty();
 		}
-	*/
 	}
 }

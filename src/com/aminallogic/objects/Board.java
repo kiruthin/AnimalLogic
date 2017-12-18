@@ -1,5 +1,6 @@
 package com.aminallogic.objects;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -21,13 +22,20 @@ import java.util.EmptyStackException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.TreeSet;
 
+import javax.swing.GroupLayout;
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenuBar;
 import javax.swing.JPanel;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+
 import java.awt.geom.Rectangle2D;
 //import javax.swing.
 
@@ -35,8 +43,9 @@ import com.aminallogic.exceptions.InvalidBoardException;
 
 public class Board extends JFrame implements ActionListener, MouseListener, MouseMotionListener, KeyListener{
 	
-	static String testBoard  = "GG1,GY2,GB3,GR4,LG5,LY6,LB7,LR8,HG9,HY10,HB11,HR12,CG13,CY14,CB15,CR16";
-	static String testBoard1 = "CB1,CR2,LY3,GR4,HB5,CY6,LR7,HY8,LG9,CG10,GG11,HR12,GY13,HG14,GB15,LB16";
+	static String testBoard1  = "GG1,GY2,GB3,GR4,LG5,LY6,LB7,LR8,HG9,HY10,HB11,HR12,CG13,CY14,CB15,CR16";
+	static String testBoard2  = "HY1,HR2,HB3,HG4,GB5,GG6,GY7,GR8,CG9,CY10,CR11,CB12,LR13,LG14,LB15,LY16";
+	static String testBoard3  = "CB1,CR2,LY3,GR4,HB5,CY6,LR7,HY8,LG9,CG10,GG11,HR12,GY13,HG14,GB15,LB16";
 	
 	/*
 	 * We will assume that the size of the board also determine the number of types of pieces 
@@ -138,6 +147,8 @@ public class Board extends JFrame implements ActionListener, MouseListener, Mous
      * It is PMS 158. The RGB values are approximately (245, 128, 37).
      */
     public static final Color PRINCETON_ORANGE = new Color(245, 128, 37);
+    
+    public static final Color TRANSPARENT =      new Color(255, 255, 255, 0);
 
     // default colors
     private static final Color DEFAULT_PEN_COLOR   = BLACK;
@@ -185,7 +196,7 @@ public class Board extends JFrame implements ActionListener, MouseListener, Mous
     private Font font;
 
     // the JLabel for drawing
-    private JLabel draw;
+    private JLabel drawLabel;
 
     // double buffered graphics
     private BufferedImage offscreenImage, onscreenImage;
@@ -205,8 +216,17 @@ public class Board extends JFrame implements ActionListener, MouseListener, Mous
 
     // event-based listeners
     //private final ArrayList<DrawListener> listeners = new ArrayList<DrawListener>();
+    SolutionQueue sq = null;
     
-    
+    JButton resetButton = null;
+    JButton undoButton = null;
+ 
+
+	private JComboBox c = new JComboBox();
+	private JButton   b = new JButton("Select");
+	private JTextField t = new JTextField();
+	int count            =0;
+
 	public Board(String StartingSequence, int size) throws Exception
 	{
 		BOARD_SIZE   = size;
@@ -219,7 +239,7 @@ public class Board extends JFrame implements ActionListener, MouseListener, Mous
 	}
 	public Board(int size) throws Exception
 	{
-		this(testBoard, size);	
+		this(testBoard2, size);	
 	}
 	public void initializeBoard(String StartingSequence) throws InvalidBoardException
 	{
@@ -250,10 +270,15 @@ public class Board extends JFrame implements ActionListener, MouseListener, Mous
 		 *   
 		 *   	CB1,CR2,LY3,GR4,HB5,CY6,LR7,HY8,LG9,CG10,GG11,HR12,GY13,HG14,GB15,LB16
 		 */
+		
+		sq = new SolutionQueue(
+				40, 
+				10, 
+				onscreen, offscreen);
+		
 		List<String> thePieceList = Arrays.asList(StartingSequence.split(","));
-//		thePieceList.forEach(item->System.out.print(item+" "));
 		thePieceList.forEach(item->{
-			System.out.println("PieceCode ="+ item.toUpperCase());
+			//System.out.println("PieceCode ="+ item.toUpperCase());
 			AnimalQueue aq  = null;
 			Piece tempP = new Piece(item.toUpperCase(), onscreen, offscreen);
 			int rowCol = ((tempP.getBoardPostiion()-1)/this.BOARD_SIZE);
@@ -262,8 +287,8 @@ public class Board extends JFrame implements ActionListener, MouseListener, Mous
 			if(this.TheBoard[rowCol] == null)
 			{
 				aq = new AnimalQueue(
-							AnimalQueue.recX, 
-							AnimalQueue.recY+(rowCol*AnimalQueue.recY_space), 
+							40, 
+							200+(rowCol*AnimalQueue.recY_space), 
 							onscreen, offscreen);
 				this.TheBoard[rowCol] = aq;	
 			}
@@ -275,14 +300,27 @@ public class Board extends JFrame implements ActionListener, MouseListener, Mous
 			tempP.setMyQueue(aq);
 			tempP.setQueuePostiion(queP);
 			
-			System.out.println(tempP);
+			//System.out.println(tempP);
 		});
         this.paintComponent(onscreen);
 	}
+	/*
+	 * Initialize the Panel for the board.
+	 */
 	public void initPanel()
 	{
 		this.setVisible(false);
-        //frame = new JFrame();
+		//this.setLayout(new BorderLayout());
+        
+		//*Layout setup
+		
+		GroupLayout layout = new GroupLayout(this);
+		//this.setLayout(layout);
+
+		layout.setAutoCreateGaps(true);
+		layout.setAutoCreateContainerGaps(true);		
+				
+		//frame = new JFrame();
         offscreenImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         onscreenImage  = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         offscreen = offscreenImage.createGraphics();
@@ -302,45 +340,109 @@ public class Board extends JFrame implements ActionListener, MouseListener, Mous
         hints.put(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         offscreen.addRenderingHints(hints);
 
+        
         // frame stuff
         ImageIcon icon = new ImageIcon(onscreenImage);
-        draw = new JLabel(icon);
+        drawLabel = new JLabel(icon);
 
-        draw.addMouseListener(this);
-        draw.addMouseMotionListener(this);
+        drawLabel.addMouseListener(this);
+        drawLabel.addMouseMotionListener(this);
+               
+        //Create buttons
+        resetButton = new JButton();
+        undoButton  = new JButton();
+        
+        undoButton.setVisible(true);
+        undoButton.setEnabled(true);
+        undoButton.setName("Undo");
+        undoButton.setText("Undo");
+        undoButton.setSize(75, 30);
+        undoButton.setPreferredSize(new Dimension(75,30));
+        
+        resetButton.setVisible(true);
+        resetButton.setEnabled(true);
+        resetButton.setName("Reset");
+        resetButton.setText("Reset");
+    	resetButton.setSize(75, 30);
+    	resetButton.setPreferredSize(new Dimension(75,30));
+    	
+        //this.add(resetButton, BorderLayout.NORTH);
+        //this.add(undoButton, BorderLayout.NORTH);
+      
+      //  JPanel mainPanel = new JPanel(new BorderLayout());
 
-        this.setContentPane(draw);
+      //  JPanel northPanel = new JPanel();
+      //  northPanel.add(resetButton);
+      //  northPanel.add(undoButton);
+      //  mainPanel.add(northPanel, BorderLayout.NORTH);
+      //  mainPanel.add(drawLabel, BorderLayout.CENTER);
+        
+
+     //   generalColorValue = getColorParameter(Skin.GENERAL_TEXT_COLOR); 
+        //controlColorValue = getColorParameter(Skin.CONTROL_BACKGROUND_COLOR); 
+ 
+		//trimColorValue = getColorParameter(Skin.TRIM_COLOR); 
+	    
+		initComboBox();
+		//this.setContentPane(drawLabel); <---------------------------
+        this.add(drawLabel, BorderLayout.CENTER);
+        
         this.addKeyListener(this);    // JLabel cannot get keyboard focus
         this.setResizable(true);
-        // frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);            // closes all windows
-        this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);      // closes only current window
+        this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);            // closes all windows
+        //this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);      // closes only current window
         this.setTitle(name);
        // frame.setJMenuBar(createMenuBar());
         this.pack();
         this.requestFocusInWindow();
         this.setVisible(true);
+ 
+	}
+	public void initComboBox()
+	{
+		String[] description = { "Ebullient", "Obtuse", "Recalcitrant",
+			      "Brilliant", "Somnescent", "Timorous", "Florid", "Putrescent" };
 
-     //   generalColorValue = getColorParameter(Skin.GENERAL_TEXT_COLOR); 
-        //controlColorValue = getColorParameter(Skin.CONTROL_BACKGROUND_COLOR); 
-        //trimColorValue = getColorParameter(Skin.TRIM_COLOR); 
+		for (int i = 0; i < 4; i++)
+			      c.addItem(description[count++]);
+		t.setEditable(false);
+		b.addActionListener(new ActionListener() {
+			      public void actionPerformed(ActionEvent e) {
+			        if (count < description.length)
+			        {
+			          c.addItem(description[count++]);
+			        }
+			  }
+		});
+		c.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				
+			    System.out.println("index: " + c.getSelectedIndex() + "   "
+			            + ((JComboBox) e.getSource()).getSelectedItem());
+			    
+			    t.setText("index: " + c.getSelectedIndex() + "   "
+			            + ((JComboBox) e.getSource()).getSelectedItem());
+			      }
+		});
+		//	    Container cp = getContentPane();
+		//	    cp.setLayout(new FlowLayout());
+	//	this.add(t, BorderLayout.NORTH);
+		this.add(c, BorderLayout.NORTH);
+	//	this.add(b, BorderLayout.NORTH);
 	}
     public void paintComponent (Graphics2D g) {
     	Graphics2D g2d = (Graphics2D) g;
     	super.paintComponents(g2d);
         //Arrays.setAll(TheBoard, i -> supplier.paint());
         //TheBoard.forEach(item->System.out.print(item+" "));
-        for(int i=0; i<this.BOARD_SIZE; i++)
-        {
-        	this.TheBoard[i].draw();
-        }        
-        this.validate();
-        this.repaint();
+    	draw();
     }
 	private void setPenColor() {
 		// TODO Auto-generated method stub	
 	}
 	private void clear() {
 		// TODO Auto-generated method stub
+		System.out.println("Calling clear");
 	}
 	private void setFont() {
 		// TODO Auto-generated method stub
@@ -350,6 +452,32 @@ public class Board extends JFrame implements ActionListener, MouseListener, Mous
 	}
 	private void setXscale() {
 		// TODO Auto-generated method stub
+	}
+	public void draw()
+	{
+        onscreen.setColor(DEFAULT_CLEAR_COLOR);
+        onscreen.fillRect(0, 0, width, height);
+		sq.draw();        
+		for(int i=0; i<this.BOARD_SIZE; i++)
+        {
+        	this.TheBoard[i].draw();
+        }
+		
+    	undoButton.setSize(75, 30);
+    	undoButton.setLocation(
+    			(drawLabel.getWidth()-40+drawLabel.getY())+drawLabel.getLocationOnScreen().x,
+    			40+drawLabel.getLocationOnScreen().y);
+    	
+        //undoButton.setLocation((drawLabel.getWidth()-undoButton.getX()+drawLabel.getY()),40);
+
+    	resetButton.setSize(75, 30);
+    	resetButton.setLocation(
+    			undoButton.getX(),
+    			undoButton.getY()+undoButton.getHeight()+5);
+    	
+    	this.validate();
+        this.repaint();
+
 	}
 	@Override
 	public String toString()
@@ -374,15 +502,16 @@ public class Board extends JFrame implements ActionListener, MouseListener, Mous
 	@Override
 	public void mouseDragged(MouseEvent e) {
 		// TODO Auto-generated method stub
+	/*
 		if(Piece.moving)
 		{
-			System.out.println("Mouse dragged" + Piece.selectedPiece);
 			Piece.selectedPiece.setLocation(e.getPoint());
-			//Piece.selectedPiece.paint();
-			onscreen.fill3DRect(e.getX(), e.getY(), 100, 50, false);
+			draw();
 			this.validate();
 			this.repaint();
+			System.out.println("Mouse dragged" + Piece.selectedPiece);
 		}
+	*/	
 	}
 	@Override
 	public void mouseMoved(MouseEvent e) {
@@ -396,30 +525,76 @@ public class Board extends JFrame implements ActionListener, MouseListener, Mous
 	@Override
 	public void mouseEntered(MouseEvent arg0) {
 		// TODO Auto-generated method stub
-		System.out.println("mouseEntered");
+		//System.out.println("mouseEntered");
 	}
 	@Override
 	public void mouseExited(MouseEvent arg0) {
 		// TODO Auto-generated method stub
-		System.out.println("mouseExited");
+		//System.out.println("mouseExited");
 	}
 	@Override
 	public void mousePressed(MouseEvent e) {
 		// TODO Auto-generated method stub
+		Optional<Piece> p = null;
+		
+		p = sq.processMousePress(e);
+		p.ifPresent(item->{
+			item.setScale(AnimalQueue.PieceScale);
+			item.getMyQueue().addPiece(item, 0);
+			item.draw();
+		//	sq.draw();
+			});
 		for(int i=0; i<this.BOARD_SIZE; i++)
 		{
 			AnimalQueue aq = this.TheBoard[i];
 			if(aq.contains(e.getPoint()))
 			{
-				aq.processMousePress(e);
+				aq.getTop().ifPresent(item->{
+					if(sq.isValidMove(item))
+					{
+						aq.removePiece()
+						.ifPresent(item2->{
+							System.out.println(item2);
+							item2.setScale(SolutionQueue.PieceScale);
+							sq.addPiece(item2);
+							item2.draw();
+							});
+					}
+					else
+					{	
+						System.out.println("Not a valie move");
+					}
+				});
+				/*
+				p = aq.processMousePress(e);
+				p.ifPresent(item->{
+		//			System.out.println("\t aq contents ="+ aq.myQueue);
+					Piece tempP = aq.removePiece();
+					tempP.setScale(SolutionQueue.PieceScale);
+					sq.addPiece(tempP);
+		//			System.out.println("\t Peek  ="+ aq.removePiece());
+		//			System.out.println("\t PieceCode removed  ="+ tempP);
+		//			System.out.println("\t aq contents ="+ aq.myQueue);
+					}
+				);
+				*/
+				break;
 			}
 		}
+		draw();
+		repaint();
 	}
 	@Override
 	public void mouseReleased(MouseEvent arg0) {
 		// TODO Auto-generated method stub
-		Piece.moving = false;
-		System.out.println("mouseReleased");
+		if(Piece.selectedPiece != null)
+		{
+			Piece.moving = false;
+			Piece.selectedPiece.setMoving(false);
+			draw();
+			repaint();
+			//System.out.println("mouseReleased");
+		}
 	}
 	@Override
 	public void keyPressed(KeyEvent arg0) {
